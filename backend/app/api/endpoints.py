@@ -113,3 +113,25 @@ def reject_response(response_id: int, db: Session = Depends(database.get_db), cu
     response.status_aprovacao = models.ApprovalStatus.rejeitada
     db.commit()
     return {"message": texts.SUCCESS_RESPONSE_REJECTED}
+
+@router.post("/responses/{response_id}/upvote")
+def upvote_response(response_id: int, db: Session = Depends(database.get_db)):
+    response = db.query(models.Response).filter(models.Response.id == response_id).first()
+    if not response:
+        raise HTTPException(status_code=404, detail=texts.ERROR_RESPONSE_NOT_FOUND)
+    
+    response.upvotes += 1
+    db.commit()
+    db.refresh(response)
+    return {"message": "Upvote registered", "upvotes": response.upvotes}
+
+@router.post("/responses/{response_id}/downvote")
+def downvote_response(response_id: int, db: Session = Depends(database.get_db)):
+    response = db.query(models.Response).filter(models.Response.id == response_id).first()
+    if not response:
+        raise HTTPException(status_code=404, detail=texts.ERROR_RESPONSE_NOT_FOUND)
+    
+    response.downvotes += 1
+    db.commit()
+    db.refresh(response)
+    return {"message": "Downvote registered", "downvotes": response.downvotes}

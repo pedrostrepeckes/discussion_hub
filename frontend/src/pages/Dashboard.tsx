@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, List, Tag, Button, Typography, Skeleton, message } from 'antd';
+import { Tabs, List, Tag, Button, Typography, Skeleton, message, Modal, Form, Input } from 'antd';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { DiscussionStatus, Role } from '../types';
@@ -12,6 +12,8 @@ const { Title } = Typography;
 const Dashboard: React.FC = () => {
     const [discussions, setDiscussions] = useState<Discussion[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [form] = Form.useForm();
     const { user } = useAuthStore();
 
     useEffect(() => {
@@ -26,6 +28,18 @@ const Dashboard: React.FC = () => {
             message.error(TEXTS.ERROR_GENERIC);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateDiscussion = async (values: { title: string; content: string }) => {
+        try {
+            await api.post('/discussions/', values);
+            message.success(TEXTS.SUCCESS_GENERIC || 'Discussão criada com sucesso!');
+            setIsModalOpen(false);
+            form.resetFields();
+            fetchDiscussions();
+        } catch (error) {
+            message.error(TEXTS.ERROR_GENERIC);
         }
     };
 
@@ -79,7 +93,7 @@ const Dashboard: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <Title level={2}>{TEXTS.DASHBOARD_TITLE}</Title>
                 {user?.role === Role.ADMIN && (
-                    <Button type="primary">{TEXTS.NEW_DISCUSSION_BUTTON}</Button>
+                    <Button type="primary" onClick={() => setIsModalOpen(true)}>{TEXTS.NEW_DISCUSSION_BUTTON}</Button>
                 )}
             </div>
 
@@ -88,6 +102,36 @@ const Dashboard: React.FC = () => {
             ) : (
                 <Tabs defaultActiveKey="1" items={items} />
             )}
+
+            <Modal
+                title="Nova Discussão"
+                open={isModalOpen}
+                onOk={form.submit}
+                onCancel={() => setIsModalOpen(false)}
+                okText="Criar"
+                cancelText="Cancelar"
+            >
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleCreateDiscussion}
+                >
+                    <Form.Item
+                        name="title"
+                        label="Título"
+                        rules={[{ required: true, message: 'Por favor, insira o título!' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        name="content"
+                        label="Conteúdo"
+                        rules={[{ required: true, message: 'Por favor, insira o conteúdo!' }]}
+                    >
+                        <Input.TextArea rows={4} />
+                    </Form.Item>
+                </Form>
+            </Modal>
         </div>
     );
 };

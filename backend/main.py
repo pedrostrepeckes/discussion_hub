@@ -11,6 +11,7 @@ app = FastAPI(title="PoliticaFatos API")
 # CORS
 origins = [
     "http://localhost:5174", # Vite default
+    "http://localhost:5173", # Vite default
     "http://localhost:8000",
     "http://localhost:3000",
 ]

@@ -55,6 +55,28 @@ const DiscussionDetail: React.FC = () => {
         }
     };
 
+    const handleVote = async (responseId: number, voteType: 'up' | 'down') => {
+        try {
+            // Optimistic update
+            setResponses(prevResponses => prevResponses.map(r => {
+                if (r.id === responseId) {
+                    return {
+                        ...r,
+                        upvotes: voteType === 'up' ? r.upvotes + 1 : r.upvotes,
+                        downvotes: voteType === 'down' ? r.downvotes + 1 : r.downvotes
+                    };
+                }
+                return r;
+            }));
+
+            const endpoint = voteType === 'up' ? 'upvote' : 'downvote';
+            await api.post(`/responses/${responseId}/${endpoint}`);
+        } catch (error) {
+            message.error("Erro ao registrar voto.");
+            // Revert optimistic update if needed (optional, keeping it simple for now)
+        }
+    };
+
     // Organize responses: Top level only for the columns, replies nested inside
     const organizeResponses = (allResponses: Response[]) => {
         const map = new Map<number, Response>();
@@ -98,9 +120,24 @@ const DiscussionDetail: React.FC = () => {
             }
         >
             <Paragraph>{item.content}</Paragraph>
-            <div style={{ display: 'flex', gap: 16, color: '#888', fontSize: 12 }}>
-                <span><LikeOutlined /> {item.upvotes}</span>
-                <span><DislikeOutlined /> {item.downvotes}</span>
+            <div style={{ display: 'flex', gap: 16, color: '#888', fontSize: 12, alignItems: 'center' }}>
+                <Button
+                    type="text"
+                    shape="circle"
+                    icon={<LikeOutlined />}
+                    onClick={() => handleVote(item.id, 'up')}
+                />
+                <span>{item.upvotes}</span>
+
+                <Button
+                    type="text"
+                    shape="circle"
+                    icon={<DislikeOutlined />}
+                    onClick={() => handleVote(item.id, 'down')}
+                />
+                <span>{item.downvotes}</span>
+
+                <Divider type="vertical" />
                 <span>{new Date(item.created_at).toLocaleDateString()}</span>
             </div>
             {item.replies && item.replies.length > 0 && (
