@@ -1,0 +1,70 @@
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from datetime import datetime
+from .db.models import Role, ResponseType, ApprovalStatus, DiscussionStatus
+
+# User Schemas
+class UserBase(BaseModel):
+    email: EmailStr
+    name: str
+
+class UserCreate(UserBase):
+    password: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserOut(UserBase):
+    id: int
+    role: Role
+
+    class Config:
+        orm_mode = True
+
+# Discussion Schemas
+class DiscussionBase(BaseModel):
+    title: str
+    content: str
+
+class DiscussionCreate(DiscussionBase):
+    pass
+
+class DiscussionOut(DiscussionBase):
+    id: int
+    status: DiscussionStatus
+    user_id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+# Response Schemas
+class ResponseBase(BaseModel):
+    content: str
+    type: ResponseType
+    parent_id: Optional[int] = None
+
+class ResponseCreate(ResponseBase):
+    pass
+
+class ResponseOut(ResponseBase):
+    id: int
+    discussion_id: int
+    user_id: int
+    status_aprovacao: ApprovalStatus
+    is_reliable_source: bool
+    upvotes: int
+    downvotes: int
+    created_at: datetime
+    author: UserOut
+
+    class Config:
+        orm_mode = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
