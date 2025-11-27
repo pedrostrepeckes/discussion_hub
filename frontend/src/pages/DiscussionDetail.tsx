@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Row, Col, Card, Typography, Tag, Divider, Button, Form, Input, Radio, message, Badge, Tooltip } from 'antd';
-import { CheckCircleOutlined, LikeOutlined, DislikeOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Typography, Tag, Divider, Button, Form, Input, Radio, message, Badge, Tooltip, Space } from 'antd';
+import { CheckCircleOutlined, LikeOutlined, DislikeOutlined, MessageOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import { ResponseType, DiscussionStatus } from '../types';
 import type { Discussion, Response } from '../types';
@@ -10,13 +10,167 @@ import { TEXTS } from '../utils/textDictionary';
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
 
+interface ResponseItemProps {
+    item: Response;
+    onVote: (id: number, type: 'up' | 'down') => void;
+    onReply: (id: number) => void;
+    replyingTo: number | null;
+    onCancelReply: () => void;
+    onSubmitReply: (values: any) => void;
+    submittingReply: boolean;
+    isRoot?: boolean;
+}
+
+const ResponseItem: React.FC<ResponseItemProps> = ({
+    item,
+    onVote,
+    onReply,
+    replyingTo,
+    onCancelReply,
+    onSubmitReply,
+    submittingReply,
+    isRoot = false
+}) => {
+    const [form] = Form.useForm();
+
+    // Reset form when replyingTo changes to this item
+    useEffect(() => {
+        if (replyingTo === item.id) {
+            form.resetFields();
+        }
+    }, [replyingTo, item.id, form]);
+
+    const isReplying = replyingTo === item.id;
+
+    const getBorderColor = () => {
+        if (item.is_reliable_source) return '#52c41a';
+        if (item.type === ResponseType.CONCORDO) return '#b7eb8f'; // Light green
+        if (item.type === ResponseType.DISCORDO) return '#ffa39e'; // Light red
+        return undefined;
+    };
+
+    return (
+        <div style={{ marginBottom: 16 }}>
+            <Card
+                style={{
+                    borderColor: getBorderColor(),
+                    borderLeft: item.type === ResponseType.CONCORDO ? '5px solid #52c41a' : '5px solid #f5222d'
+                }}
+                size="small"
+                title={
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space>
+                            <Text strong>{item.author?.name || 'Usuário'}</Text>
+                            {item.type === ResponseType.CONCORDO ?
+                                <Tag color="success">Concorda</Tag> :
+                                <Tag color="error">Discorda</Tag>
+                            }
+                        </Space>
+                        {item.is_reliable_source && (
+                            <Tooltip title={TEXTS.RELIABLE_SOURCE_BADGE}>
+                                <Badge status="success" text={<CheckCircleOutlined style={{ color: '#52c41a' }} />} />
+                            </Tooltip>
+                        )}
+                    </div>
+                }
+            >
+                <Paragraph>{item.content}</Paragraph>
+                <div style={{ display: 'flex', gap: 16, color: '#888', fontSize: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Button
+                        type={item.user_vote === 'up' ? 'primary' : 'text'}
+                        shape="circle"
+                        icon={<LikeOutlined />}
+                        onClick={() => onVote(item.id, 'up')}
+                        size="small"
+                    />
+                    <span>{item.upvotes}</span>
+
+                    <Button
+                        type={item.user_vote === 'down' ? 'primary' : 'text'}
+                        shape="circle"
+                        icon={<DislikeOutlined />}
+                        onClick={() => onVote(item.id, 'down')}
+                        danger={item.user_vote === 'down'}
+                        size="small"
+                    />
+                    <span>{item.downvotes}</span>
+
+                    <Divider type="vertical" />
+                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
+
+                    {isRoot && (
+                        <>
+                            <Divider type="vertical" />
+                            <Button
+                                type="link"
+                                icon={<MessageOutlined />}
+                                onClick={() => onReply(item.id)}
+                                size="small"
+                            >
+                                Responder
+                            </Button>
+                        </>
+                    )}
+                </div>
+
+                {isReplying && (
+                    <div style={{ marginTop: 16, background: '#fafafa', padding: 16, borderRadius: 8 }}>
+                        <Form form={form} onFinish={onSubmitReply} layout="vertical">
+                            <Form.Item name="type" rules={[{ required: true, message: 'Escolha um lado!' }]}>
+                                <Radio.Group buttonStyle="solid" size="small">
+                                    <Radio.Button value={ResponseType.CONCORDO} style={{ color: '#52c41a' }}>Concordo</Radio.Button>
+                                    <Radio.Button value={ResponseType.DISCORDO} style={{ color: '#f5222d' }}>Discordo</Radio.Button>
+                                </Radio.Group>
+                            </Form.Item>
+                            <Form.Item name="content" rules={[{ required: true, message: 'Escreva sua resposta!' }]}>
+                                <TextArea rows={3} placeholder="Escreva sua resposta..." />
+                            </Form.Item>
+                            <Space>
+                                <Button type="primary" htmlType="submit" loading={submittingReply} size="small">
+                                    Enviar
+                                </Button>
+                                <Button onClick={onCancelReply} size="small">
+                                    Cancelar
+                                </Button>
+                            </Space>
+                        </Form>
+                    </div>
+                )}
+            </Card>
+
+            {/* Nested Replies */}
+            {item.replies && item.replies.length > 0 && (
+                <div style={{ marginLeft: 32, marginTop: 8 }}>
+                    {item.replies.map(reply => (
+                        <ResponseItem
+                            key={reply.id}
+                            item={reply}
+                            onVote={onVote}
+                            onReply={onReply}
+                            replyingTo={replyingTo}
+                            onCancelReply={onCancelReply}
+                            onSubmitReply={onSubmitReply}
+                            submittingReply={submittingReply}
+                            isRoot={false} // Nested items are not root
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const DiscussionDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [discussion, setDiscussion] = useState<Discussion | null>(null);
     const [responses, setResponses] = useState<Response[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [form] = Form.useForm();
+    const [replyingTo, setReplyingTo] = useState<number | null>(null);
+    const [submittingReply, setSubmittingReply] = useState(false);
+
+    // Main form for top-level responses
+    const [mainForm] = Form.useForm();
 
     useEffect(() => {
         fetchData();
@@ -37,17 +191,17 @@ const DiscussionDetail: React.FC = () => {
         }
     };
 
-    const onFinish = async (values: any) => {
+    const handleMainSubmit = async (values: any) => {
         setSubmitting(true);
         try {
             await api.post(`/discussions/${id}/responses/`, {
                 content: values.content,
                 type: values.type,
-                parent_id: null // Top level for now
+                parent_id: null
             });
             message.success("Resposta enviada para moderação!");
-            form.resetFields();
-            // Don't refresh responses immediately as it needs moderation
+            mainForm.resetFields();
+            fetchData(); // Refresh to see if it appears (if moderation allows) or just to sync
         } catch (error: any) {
             message.error(error.response?.data?.detail || TEXTS.ERROR_GENERIC);
         } finally {
@@ -55,47 +209,73 @@ const DiscussionDetail: React.FC = () => {
         }
     };
 
+    const handleReplySubmit = async (values: any) => {
+        if (!replyingTo) return;
+
+        setSubmittingReply(true);
+        try {
+            await api.post(`/discussions/${id}/responses/`, {
+                content: values.content,
+                type: values.type,
+                parent_id: replyingTo
+            });
+            message.success("Resposta enviada para moderação!");
+            setReplyingTo(null);
+            fetchData();
+        } catch (error: any) {
+            message.error(error.response?.data?.detail || TEXTS.ERROR_GENERIC);
+        } finally {
+            setSubmittingReply(false);
+        }
+    };
+
     const handleVote = async (responseId: number, voteType: 'up' | 'down') => {
         try {
             // Optimistic update
-            setResponses(prevResponses => prevResponses.map(r => {
-                if (r.id === responseId) {
-                    let newUpvotes = r.upvotes;
-                    let newDownvotes = r.downvotes;
-                    let newUserVote = r.user_vote;
+            const updateVoteInList = (list: Response[]): Response[] => {
+                return list.map(r => {
+                    if (r.id === responseId) {
+                        let newUpvotes = r.upvotes;
+                        let newDownvotes = r.downvotes;
+                        let newUserVote = r.user_vote;
 
-                    if (r.user_vote === voteType) {
-                        // Toggle off
-                        newUserVote = null;
-                        if (voteType === 'up') newUpvotes--;
-                        else newDownvotes--;
-                    } else {
-                        // Change vote or new vote
-                        if (r.user_vote === 'up') newUpvotes--;
-                        if (r.user_vote === 'down') newDownvotes--;
+                        if (r.user_vote === voteType) {
+                            // Toggle off
+                            newUserVote = null;
+                            if (voteType === 'up') newUpvotes--;
+                            else newDownvotes--;
+                        } else {
+                            // Change vote or new vote
+                            if (r.user_vote === 'up') newUpvotes--;
+                            if (r.user_vote === 'down') newDownvotes--;
 
-                        newUserVote = voteType;
-                        if (voteType === 'up') newUpvotes++;
-                        else newDownvotes++;
+                            newUserVote = voteType;
+                            if (voteType === 'up') newUpvotes++;
+                            else newDownvotes++;
+                        }
+
+                        return {
+                            ...r,
+                            upvotes: newUpvotes,
+                            downvotes: newDownvotes,
+                            user_vote: newUserVote
+                        };
                     }
+                    if (r.replies) {
+                        return { ...r, replies: updateVoteInList(r.replies) };
+                    }
+                    return r;
+                });
+            };
 
-                    return {
-                        ...r,
-                        upvotes: newUpvotes,
-                        downvotes: newDownvotes,
-                        user_vote: newUserVote
-                    };
-                }
-                return r;
-            }));
+            setResponses(prev => updateVoteInList(prev));
 
             await api.post(`/responses/${responseId}/vote`, null, {
                 params: { vote_type: voteType }
             });
         } catch (error) {
             message.error("Erro ao registrar voto.");
-            // Revert optimistic update if needed (optional, keeping it simple for now)
-            // Ideally we should refetch or revert here
+            fetchData(); // Revert on error
         }
     };
 
@@ -104,19 +284,24 @@ const DiscussionDetail: React.FC = () => {
         const map = new Map<number, Response>();
         const roots: Response[] = [];
 
-        // Initialize map with replies array
-        allResponses.forEach(r => {
-            map.set(r.id, { ...r, replies: [] });
+        // Deep copy to avoid mutating state directly if we were using it elsewhere
+        // But here we are building a new structure for render
+        const allResponsesCopy = JSON.parse(JSON.stringify(allResponses));
+
+        // Initialize map
+        allResponsesCopy.forEach((r: Response) => {
+            r.replies = []; // Ensure replies array exists
+            map.set(r.id, r);
         });
 
-        allResponses.forEach(r => {
+        allResponsesCopy.forEach((r: Response) => {
             if (r.parent_id) {
                 const parent = map.get(r.parent_id);
                 if (parent) {
-                    parent.replies?.push(map.get(r.id)!);
+                    parent.replies?.push(r);
                 }
             } else {
-                roots.push(map.get(r.id)!);
+                roots.push(r);
             }
         });
 
@@ -126,55 +311,6 @@ const DiscussionDetail: React.FC = () => {
     const rootResponses = organizeResponses(responses);
     const agreeResponses = rootResponses.filter(r => r.type === ResponseType.CONCORDO);
     const disagreeResponses = rootResponses.filter(r => r.type === ResponseType.DISCORDO);
-
-    const ResponseCard = ({ item }: { item: Response }) => (
-        <Card
-            style={{ marginBottom: 16, borderColor: item.is_reliable_source ? '#52c41a' : undefined }}
-            title={
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text strong>{item.author?.name || 'Usuário'}</Text>
-                    {item.is_reliable_source && (
-                        <Tooltip title={TEXTS.RELIABLE_SOURCE_BADGE}>
-                            <Badge status="success" text={<CheckCircleOutlined style={{ color: '#52c41a' }} />} />
-                        </Tooltip>
-                    )}
-                </div>
-            }
-        >
-            <Paragraph>{item.content}</Paragraph>
-            <div style={{ display: 'flex', gap: 16, color: '#888', fontSize: 12, alignItems: 'center' }}>
-                <Button
-                    type={item.user_vote === 'up' ? 'primary' : 'text'}
-                    shape="circle"
-                    icon={<LikeOutlined />}
-                    onClick={() => handleVote(item.id, 'up')}
-                />
-                <span>{item.upvotes}</span>
-
-                <Button
-                    type={item.user_vote === 'down' ? 'primary' : 'text'}
-                    shape="circle"
-                    icon={<DislikeOutlined />}
-                    onClick={() => handleVote(item.id, 'down')}
-                    danger={item.user_vote === 'down'}
-                />
-                <span>{item.downvotes}</span>
-
-                <Divider type="vertical" />
-                <span>{new Date(item.created_at).toLocaleDateString()}</span>
-            </div>
-            {item.replies && item.replies.length > 0 && (
-                <div style={{ marginTop: 16, paddingLeft: 16, borderLeft: '2px solid #f0f0f0' }}>
-                    {item.replies.map(reply => (
-                        <div key={reply.id} style={{ marginBottom: 8 }}>
-                            <Text strong>{reply.author?.name}: </Text>
-                            <Text>{reply.content}</Text>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </Card>
-    );
 
     if (loading || !discussion) return <div style={{ padding: 24 }}>Carregando...</div>;
 
@@ -196,11 +332,35 @@ const DiscussionDetail: React.FC = () => {
             <Row gutter={24}>
                 <Col span={12}>
                     <Title level={4} style={{ color: '#52c41a', textAlign: 'center' }}>{TEXTS.RESPONSE_AGREE_TITLE}</Title>
-                    {agreeResponses.map(r => <ResponseCard key={r.id} item={r} />)}
+                    {agreeResponses.map(r => (
+                        <ResponseItem
+                            key={r.id}
+                            item={r}
+                            onVote={handleVote}
+                            onReply={setReplyingTo}
+                            replyingTo={replyingTo}
+                            onCancelReply={() => setReplyingTo(null)}
+                            onSubmitReply={handleReplySubmit}
+                            submittingReply={submittingReply}
+                            isRoot={true}
+                        />
+                    ))}
                 </Col>
                 <Col span={12}>
                     <Title level={4} style={{ color: '#f5222d', textAlign: 'center' }}>{TEXTS.RESPONSE_DISAGREE_TITLE}</Title>
-                    {disagreeResponses.map(r => <ResponseCard key={r.id} item={r} />)}
+                    {disagreeResponses.map(r => (
+                        <ResponseItem
+                            key={r.id}
+                            item={r}
+                            onVote={handleVote}
+                            onReply={setReplyingTo}
+                            replyingTo={replyingTo}
+                            onCancelReply={() => setReplyingTo(null)}
+                            onSubmitReply={handleReplySubmit}
+                            submittingReply={submittingReply}
+                            isRoot={true}
+                        />
+                    ))}
                 </Col>
             </Row>
 
@@ -208,7 +368,7 @@ const DiscussionDetail: React.FC = () => {
 
             {discussion.status === DiscussionStatus.ATIVA && (
                 <Card title="Deixe sua opinião">
-                    <Form form={form} onFinish={onFinish} layout="vertical">
+                    <Form form={mainForm} onFinish={handleMainSubmit} layout="vertical">
                         <Form.Item name="type" rules={[{ required: true, message: 'Escolha um lado!' }]}>
                             <Radio.Group buttonStyle="solid">
                                 <Radio.Button value={ResponseType.CONCORDO} style={{ color: '#52c41a' }}>Concordo</Radio.Button>
