@@ -60,20 +60,42 @@ const DiscussionDetail: React.FC = () => {
             // Optimistic update
             setResponses(prevResponses => prevResponses.map(r => {
                 if (r.id === responseId) {
+                    let newUpvotes = r.upvotes;
+                    let newDownvotes = r.downvotes;
+                    let newUserVote = r.user_vote;
+
+                    if (r.user_vote === voteType) {
+                        // Toggle off
+                        newUserVote = null;
+                        if (voteType === 'up') newUpvotes--;
+                        else newDownvotes--;
+                    } else {
+                        // Change vote or new vote
+                        if (r.user_vote === 'up') newUpvotes--;
+                        if (r.user_vote === 'down') newDownvotes--;
+
+                        newUserVote = voteType;
+                        if (voteType === 'up') newUpvotes++;
+                        else newDownvotes++;
+                    }
+
                     return {
                         ...r,
-                        upvotes: voteType === 'up' ? r.upvotes + 1 : r.upvotes,
-                        downvotes: voteType === 'down' ? r.downvotes + 1 : r.downvotes
+                        upvotes: newUpvotes,
+                        downvotes: newDownvotes,
+                        user_vote: newUserVote
                     };
                 }
                 return r;
             }));
 
-            const endpoint = voteType === 'up' ? 'upvote' : 'downvote';
-            await api.post(`/responses/${responseId}/${endpoint}`);
+            await api.post(`/responses/${responseId}/vote`, null, {
+                params: { vote_type: voteType }
+            });
         } catch (error) {
             message.error("Erro ao registrar voto.");
             // Revert optimistic update if needed (optional, keeping it simple for now)
+            // Ideally we should refetch or revert here
         }
     };
 
@@ -122,7 +144,7 @@ const DiscussionDetail: React.FC = () => {
             <Paragraph>{item.content}</Paragraph>
             <div style={{ display: 'flex', gap: 16, color: '#888', fontSize: 12, alignItems: 'center' }}>
                 <Button
-                    type="text"
+                    type={item.user_vote === 'up' ? 'primary' : 'text'}
                     shape="circle"
                     icon={<LikeOutlined />}
                     onClick={() => handleVote(item.id, 'up')}
@@ -130,10 +152,11 @@ const DiscussionDetail: React.FC = () => {
                 <span>{item.upvotes}</span>
 
                 <Button
-                    type="text"
+                    type={item.user_vote === 'down' ? 'primary' : 'text'}
                     shape="circle"
                     icon={<DislikeOutlined />}
                     onClick={() => handleVote(item.id, 'down')}
+                    danger={item.user_vote === 'down'}
                 />
                 <span>{item.downvotes}</span>
 

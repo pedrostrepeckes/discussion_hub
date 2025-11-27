@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
 from .db.models import Role, ResponseType, ApprovalStatus, DiscussionStatus
+import enum
 
 # User Schemas
 class UserBase(BaseModel):
@@ -48,6 +49,10 @@ class ResponseBase(BaseModel):
 class ResponseCreate(ResponseBase):
     pass
 
+class VoteType(str, enum.Enum):
+    up = "up"
+    down = "down"
+
 class ResponseOut(ResponseBase):
     id: int
     discussion_id: int
@@ -58,6 +63,7 @@ class ResponseOut(ResponseBase):
     downvotes: int
     created_at: datetime
     author: UserOut
+    user_vote: Optional[VoteType] = None
 
     class Config:
         orm_mode = True

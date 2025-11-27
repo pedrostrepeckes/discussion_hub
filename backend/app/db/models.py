@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, Enum, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, Enum, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -33,6 +33,7 @@ class User(Base):
 
     discussions = relationship("Discussion", back_populates="author")
     responses = relationship("Response", back_populates="author")
+    votes = relationship("Vote", back_populates="user")
 
 class Discussion(Base):
     __tablename__ = "discussions"
@@ -66,9 +67,29 @@ class Response(Base):
     author = relationship("User", back_populates="responses")
     parent = relationship("Response", remote_side=[id], back_populates="replies")
     replies = relationship("Response", back_populates="parent")
+    votes = relationship("Vote", back_populates="response")
 
 class ReliableSource(Base):
     __tablename__ = "reliable_sources"
 
     id = Column(Integer, primary_key=True, index=True)
     domain = Column(String(255), unique=True, nullable=False)
+
+class VoteType(str, enum.Enum):
+    up = "up"
+    down = "down"
+
+class Vote(Base):
+    __tablename__ = "votes"
+    __table_args__ = (
+        UniqueConstraint('user_id', 'response_id', name='unique_user_response_vote'),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    response_id = Column(Integer, ForeignKey("responses.id"), nullable=False)
+    type = Column(Enum(VoteType), nullable=False)
+
+    user = relationship("User", back_populates="votes")
+    response = relationship("Response", back_populates="votes")
+

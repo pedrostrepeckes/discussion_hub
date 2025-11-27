@@ -56,3 +56,19 @@ def get_current_active_moderator(current_user: models.User = Depends(get_current
     if current_user.role not in [models.Role.admin, models.Role.moderator]:
         raise HTTPException(status_code=400, detail=texts.ERROR_FORBIDDEN)
     return current_user
+
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
+
+def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(database.get_db)):
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+        token_data = schemas.TokenData(email=email)
+    except JWTError:
+        return None
+    user = db.query(models.User).filter(models.User.email == token_data.email).first()
+    return user

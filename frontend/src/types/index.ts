@@ -55,6 +55,7 @@ export interface Response {
     created_at: string; // ISO string
     author?: User;
     replies?: Response[];
+    user_vote?: 'up' | 'down' | null;
 }
 
 export interface AuthResponse {
