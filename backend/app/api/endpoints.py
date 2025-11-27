@@ -54,6 +54,17 @@ def read_discussion(discussion_id: int, db: Session = Depends(database.get_db)):
         raise HTTPException(status_code=404, detail=texts.ERROR_DISCUSSION_NOT_FOUND)
     return discussion
 
+@router.put("/discussions/{discussion_id}/finish", response_model=schemas.DiscussionOut)
+def finish_discussion(discussion_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
+    discussion = db.query(models.Discussion).filter(models.Discussion.id == discussion_id).first()
+    if not discussion:
+        raise HTTPException(status_code=404, detail=texts.ERROR_DISCUSSION_NOT_FOUND)
+    
+    discussion.status = models.DiscussionStatus.finalizada
+    db.commit()
+    db.refresh(discussion)
+    return discussion
+
 # Response Endpoints
 @router.post("/discussions/{discussion_id}/responses/", response_model=schemas.ResponseOut)
 def create_response(discussion_id: int, response: schemas.ResponseCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):

@@ -3,9 +3,10 @@ import { useParams } from 'react-router-dom';
 import { Row, Col, Card, Typography, Tag, Divider, Button, Form, Input, Radio, message, Badge, Tooltip, Space } from 'antd';
 import { CheckCircleOutlined, LikeOutlined, DislikeOutlined, MessageOutlined } from '@ant-design/icons';
 import api from '../services/api';
-import { ResponseType, DiscussionStatus } from '../types';
+import { ResponseType, DiscussionStatus, Role } from '../types';
 import type { Discussion, Response } from '../types';
 import { TEXTS } from '../utils/textDictionary';
+import { useAuthStore } from '../store/authStore';
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -180,6 +181,7 @@ const ResponseItem: React.FC<ResponseItemProps> = ({
 
 const DiscussionDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
+    const { user } = useAuthStore();
     const [discussion, setDiscussion] = useState<Discussion | null>(null);
     const [responses, setResponses] = useState<Response[]>([]);
     const [loading, setLoading] = useState(true);
@@ -244,6 +246,16 @@ const DiscussionDetail: React.FC = () => {
             message.error(error.response?.data?.detail || TEXTS.ERROR_GENERIC);
         } finally {
             setSubmittingReply(false);
+        }
+    };
+
+    const handleFinishDiscussion = async () => {
+        try {
+            const response = await api.put<Discussion>(`/discussions/${id}/finish`);
+            setDiscussion(response.data);
+            message.success("Discussão finalizada com sucesso!");
+        } catch (error) {
+            message.error("Erro ao finalizar discussão.");
         }
     };
 
@@ -335,7 +347,16 @@ const DiscussionDetail: React.FC = () => {
     return (
         <div>
             <Card style={{ marginBottom: 24 }}>
-                <Title level={2}>{discussion.title}</Title>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Title level={2} style={{ marginBottom: 0 }}>{discussion.title}</Title>
+                    {user && (user.role === Role.MODERATOR || user.role === Role.ADMIN) && discussion.status === DiscussionStatus.ATIVA && (
+                        <Button danger onClick={handleFinishDiscussion}>
+                            Finalizar Discussão
+                        </Button>
+                    )}
+                </div>
+                <br />
                 <div style={{ marginBottom: 16 }}>
                     <Tag color={discussion.status === DiscussionStatus.ATIVA ? 'green' : 'red'}>
                         {discussion.status.toUpperCase()}
