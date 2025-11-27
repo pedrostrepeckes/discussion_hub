@@ -68,7 +68,15 @@ def create_response(discussion_id: int, response: schemas.ResponseCreate, db: Se
         if not parent:
             raise HTTPException(status_code=404, detail=texts.ERROR_RESPONSE_NOT_FOUND)
         if parent.parent_id: # Parent already has a parent, so this would be level 2 (too deep)
-            raise HTTPException(status_code=400, detail="Nesting limit reached (max 1 level).")
+            raise HTTPException(status_code=400, detail=texts.ERROR_NESTING_LIMIT)
+        
+        # Check if user already replied to this parent
+        existing_response = db.query(models.Response).filter(
+            models.Response.parent_id == response.parent_id,
+            models.Response.user_id == current_user.id
+        ).first()
+        if existing_response:
+            raise HTTPException(status_code=400, detail=texts.ERROR_ALREADY_RESPONDED)
 
     new_response = models.Response(
         **response.dict(),
@@ -194,7 +202,7 @@ def vote_response(
     # But frontend expects updated counts.
     
     return {
-        "message": "Vote registered", 
+        "message": texts.SUCCESS_VOTE_REGISTERED, 
         "upvotes": response.upvotes, 
         "downvotes": response.downvotes,
         "user_vote": current_vote_state

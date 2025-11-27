@@ -19,6 +19,8 @@ interface ResponseItemProps {
     onSubmitReply: (values: any) => void;
     submittingReply: boolean;
     isRoot?: boolean;
+    containerStyle?: React.CSSProperties;
+    cardStyle?: React.CSSProperties;
 }
 
 const ResponseItem: React.FC<ResponseItemProps> = ({
@@ -29,7 +31,9 @@ const ResponseItem: React.FC<ResponseItemProps> = ({
     onCancelReply,
     onSubmitReply,
     submittingReply,
-    isRoot = false
+    isRoot = false,
+    containerStyle,
+    cardStyle
 }) => {
     const [form] = Form.useForm();
 
@@ -50,11 +54,12 @@ const ResponseItem: React.FC<ResponseItemProps> = ({
     };
 
     return (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, ...containerStyle }}>
             <Card
                 style={{
                     borderColor: getBorderColor(),
-                    borderLeft: item.type === ResponseType.CONCORDO ? '5px solid #52c41a' : '5px solid #f5222d'
+                    borderLeft: item.type === ResponseType.CONCORDO ? '5px solid #52c41a' : '5px solid #f5222d',
+                    ...cardStyle
                 }}
                 size="small"
                 title={
@@ -140,20 +145,33 @@ const ResponseItem: React.FC<ResponseItemProps> = ({
 
             {/* Nested Replies */}
             {item.replies && item.replies.length > 0 && (
-                <div style={{ marginLeft: 32, marginTop: 8 }}>
-                    {item.replies.map(reply => (
-                        <ResponseItem
-                            key={reply.id}
-                            item={reply}
-                            onVote={onVote}
-                            onReply={onReply}
-                            replyingTo={replyingTo}
-                            onCancelReply={onCancelReply}
-                            onSubmitReply={onSubmitReply}
-                            submittingReply={submittingReply}
-                            isRoot={false} // Nested items are not root
-                        />
-                    ))}
+                <div style={{ marginLeft: 32, marginTop: 8, display: 'flex', flexDirection: 'column' }}>
+                    {item.replies.map(reply => {
+                        const isAgree = reply.type === ResponseType.CONCORDO;
+                        const replyContainerStyle: React.CSSProperties = {
+                            alignSelf: isAgree ? 'flex-start' : 'flex-end',
+                            width: '85%'
+                        };
+                        const replyCardStyle: React.CSSProperties = isAgree ?
+                            { borderLeft: '4px solid #52c41a', textAlign: 'left' as const } :
+                            { borderRight: '4px solid #f5222d', borderLeft: 'none', textAlign: 'right' as const };
+
+                        return (
+                            <ResponseItem
+                                key={reply.id}
+                                item={reply}
+                                onVote={onVote}
+                                onReply={onReply}
+                                replyingTo={replyingTo}
+                                onCancelReply={onCancelReply}
+                                onSubmitReply={onSubmitReply}
+                                submittingReply={submittingReply}
+                                isRoot={false} // Nested items are not root
+                                containerStyle={replyContainerStyle}
+                                cardStyle={replyCardStyle}
+                            />
+                        );
+                    })}
                 </div>
             )}
         </div>

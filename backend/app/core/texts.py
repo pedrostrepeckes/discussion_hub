@@ -16,8 +16,11 @@ SUCCESS_DISCUSSION_CREATED = "Discussão criada com sucesso."
 SUCCESS_RESPONSE_SUBMITTED = "Resposta enviada para aprovação."
 SUCCESS_RESPONSE_APPROVED = "Resposta aprovada."
 SUCCESS_RESPONSE_REJECTED = "Resposta rejeitada."
+SUCCESS_VOTE_REGISTERED = "Voto registrado."
 
-# Roles
+# Errors
+ERROR_NESTING_LIMIT = "Limite de aninhamento atingido (máximo 1 nível)."
+ERROR_ALREADY_RESPONDED = "Você já enviou uma resposta para este comentário."# Roles
 ROLE_ADMIN = "admin"
 ROLE_MODERATOR = "moderator"
 ROLE_REGULAR = "regular"
