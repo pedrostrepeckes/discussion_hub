@@ -5,12 +5,15 @@ from ..db import database, models
 from .. import schemas
 from . import auth
 from ..core import texts
+from ..core.limiter import limiter
+from fastapi import Request, Response
 
 router = APIRouter()
 
 # Auth Endpoints
 @router.post("/auth/register", response_model=schemas.UserOut)
-def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail=texts.ERROR_EMAIL_ALREADY_EXISTS)
@@ -22,20 +25,34 @@ def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     return new_user
 
 @router.post("/auth/login", response_model=schemas.Token)
-def login(user_credentials: schemas.UserLogin, db: Session = Depends(database.get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, response: Response, user_credentials: schemas.UserLogin, db: Session = Depends(database.get_db)):
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
     if not user or not auth.verify_password(user_credentials.password, user.password_hash):
         raise HTTPException(status_code=400, detail=texts.ERROR_INCORRECT_PASSWORD)
     access_token = auth.create_access_token(data={"sub": user.email})
+    
+    # Set HttpOnly cookie
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        secure=True, # Set to True in production (requires HTTPS)
+        samesite="lax",
+        max_age=1800 # 30 minutes
+    )
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/users/me", response_model=schemas.UserOut)
-def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+@limiter.limit("60/minute")
+def read_users_me(request: Request, current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
 # Discussion Endpoints
 @router.post("/discussions/", response_model=schemas.DiscussionOut)
-def create_discussion(discussion: schemas.DiscussionCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_admin)):
+@limiter.limit("60/minute")
+def create_discussion(request: Request, discussion: schemas.DiscussionCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_admin)):
     new_discussion = models.Discussion(**discussion.dict(), user_id=current_user.id)
     db.add(new_discussion)
     db.commit()
@@ -43,19 +60,22 @@ def create_discussion(discussion: schemas.DiscussionCreate, db: Session = Depend
     return new_discussion
 
 @router.get("/discussions/", response_model=List[schemas.DiscussionOut])
-def read_discussions(skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
+@limiter.limit("60/minute")
+def read_discussions(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(database.get_db)):
     discussions = db.query(models.Discussion).offset(skip).limit(limit).all()
     return discussions
 
 @router.get("/discussions/{discussion_id}", response_model=schemas.DiscussionOut)
-def read_discussion(discussion_id: int, db: Session = Depends(database.get_db)):
+@limiter.limit("60/minute")
+def read_discussion(request: Request, discussion_id: int, db: Session = Depends(database.get_db)):
     discussion = db.query(models.Discussion).filter(models.Discussion.id == discussion_id).first()
     if discussion is None:
         raise HTTPException(status_code=404, detail=texts.ERROR_DISCUSSION_NOT_FOUND)
     return discussion
 
 @router.put("/discussions/{discussion_id}/finish", response_model=schemas.DiscussionOut)
-def finish_discussion(discussion_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
+@limiter.limit("60/minute")
+def finish_discussion(request: Request, discussion_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
     discussion = db.query(models.Discussion).filter(models.Discussion.id == discussion_id).first()
     if not discussion:
         raise HTTPException(status_code=404, detail=texts.ERROR_DISCUSSION_NOT_FOUND)
@@ -67,7 +87,8 @@ def finish_discussion(discussion_id: int, db: Session = Depends(database.get_db)
 
 # Response Endpoints
 @router.post("/discussions/{discussion_id}/responses/", response_model=schemas.ResponseOut)
-def create_response(discussion_id: int, response: schemas.ResponseCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+@limiter.limit("60/minute")
+def create_response(request: Request, discussion_id: int, response: schemas.ResponseCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Check if discussion exists
     discussion = db.query(models.Discussion).filter(models.Discussion.id == discussion_id).first()
     if not discussion:
@@ -101,7 +122,8 @@ def create_response(discussion_id: int, response: schemas.ResponseCreate, db: Se
     return new_response
 
 @router.get("/discussions/{discussion_id}/responses/", response_model=List[schemas.ResponseOut])
-def read_responses(discussion_id: int, db: Session = Depends(database.get_db), current_user: Optional[models.User] = Depends(auth.get_current_user_optional)):
+@limiter.limit("60/minute")
+def read_responses(request: Request, discussion_id: int, db: Session = Depends(database.get_db), current_user: Optional[models.User] = Depends(auth.get_current_user_optional)):
     # Only return approved responses for public view
     responses = db.query(models.Response).filter(
         models.Response.discussion_id == discussion_id,
@@ -125,12 +147,14 @@ def read_responses(discussion_id: int, db: Session = Depends(database.get_db), c
 
 # Moderation Endpoints
 @router.get("/moderation/responses/pending", response_model=List[schemas.ResponseOut])
-def read_pending_responses(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
+@limiter.limit("60/minute")
+def read_pending_responses(request: Request, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
     responses = db.query(models.Response).filter(models.Response.status_aprovacao == models.ApprovalStatus.pendente).all()
     return responses
 
 @router.put("/moderation/responses/{response_id}/approve")
-def approve_response(response_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
+@limiter.limit("60/minute")
+def approve_response(request: Request, response_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
     response = db.query(models.Response).filter(models.Response.id == response_id).first()
     if not response:
         raise HTTPException(status_code=404, detail=texts.ERROR_RESPONSE_NOT_FOUND)
@@ -139,7 +163,8 @@ def approve_response(response_id: int, db: Session = Depends(database.get_db), c
     return {"message": texts.SUCCESS_RESPONSE_APPROVED}
 
 @router.put("/moderation/responses/{response_id}/reject")
-def reject_response(response_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
+@limiter.limit("60/minute")
+def reject_response(request: Request, response_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_active_moderator)):
     response = db.query(models.Response).filter(models.Response.id == response_id).first()
     if not response:
         raise HTTPException(status_code=404, detail=texts.ERROR_RESPONSE_NOT_FOUND)
@@ -148,7 +173,9 @@ def reject_response(response_id: int, db: Session = Depends(database.get_db), cu
     return {"message": texts.SUCCESS_RESPONSE_REJECTED}
 
 @router.post("/responses/{response_id}/vote")
+@limiter.limit("60/minute")
 def vote_response(
+    request: Request,
     response_id: int, 
     vote_type: schemas.VoteType, 
     db: Session = Depends(database.get_db), 

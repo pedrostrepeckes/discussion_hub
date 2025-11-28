@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from ..core import config, texts
@@ -28,12 +28,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, config.SECRET_KEY, algorithm=config.ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
+def get_current_user(access_token: Optional[str] = Cookie(None), db: Session = Depends(database.get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=texts.ERROR_INVALID_CREDENTIALS,
         headers={"WWW-Authenticate": "Bearer"},
     )
+    if not access_token:
+        raise credentials_exception
+    token = access_token.replace("Bearer ", "")
     try:
         payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
         email: str = payload.get("sub")
@@ -59,9 +62,10 @@ def get_current_active_moderator(current_user: models.User = Depends(get_current
 
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
-def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(database.get_db)):
-    if not token:
+def get_current_user_optional(access_token: Optional[str] = Cookie(None), db: Session = Depends(database.get_db)):
+    if not access_token:
         return None
+    token = access_token.replace("Bearer ", "")
     try:
         payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
         email: str = payload.get("sub")
