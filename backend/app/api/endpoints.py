@@ -49,6 +49,26 @@ def login(request: Request, response: Response, user_credentials: schemas.UserLo
 def read_users_me(request: Request, current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
+@router.put("/users/me", response_model=schemas.UserOut)
+@limiter.limit("5/minute")
+def update_user_me(
+    request: Request, 
+    user_update: schemas.UserUpdate, 
+    db: Session = Depends(database.get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_user = db.query(models.User).filter(models.User.id == current_user.id).first()
+    
+    if user_update.name:
+        db_user.name = user_update.name
+    
+    if user_update.password:
+        db_user.password_hash = auth.get_password_hash(user_update.password)
+        
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
 # Discussion Endpoints
 @router.post("/discussions/", response_model=schemas.DiscussionOut)
 @limiter.limit("60/minute")

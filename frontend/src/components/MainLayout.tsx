@@ -24,6 +24,11 @@ const MainLayout: React.FC = () => {
             label: TEXTS.DASHBOARD_TITLE,
             onClick: () => navigate('/'),
         },
+        {
+            key: '/settings',
+            label: 'Configurações',
+            onClick: () => navigate('/settings'),
+        },
     ];
 
     if (user?.role === Role.MODERATOR || user?.role === Role.ADMIN) {
