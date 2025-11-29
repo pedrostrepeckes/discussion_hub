@@ -41,12 +41,20 @@ const MainLayout: React.FC = () => {
 
     return (
         <Layout className="layout" style={{ minHeight: '100vh' }}>
-            <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Header style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 1000,
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 20px'
+            }}>
                 <div className="logo" style={{ display: 'flex', alignItems: 'center', marginRight: '20px' }}>
-                    <Title level={4} style={{ color: 'white', margin: 0 }}>{TEXTS.APP_TITLE}</Title>
+                    <Title level={4} style={{ margin: 0, color: 'var(--text-color)' }}>{TEXTS.APP_TITLE}</Title>
                 </div>
                 <Menu
-                    theme="dark"
                     mode="horizontal"
                     selectedKeys={[location.pathname]}
                     items={menuItems}
@@ -55,7 +63,7 @@ const MainLayout: React.FC = () => {
                 <div>
                     {isAuthenticated() ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ color: 'white' }}>{user?.name}</span>
+                            <span style={{ color: 'var(--text-color)' }}>{user?.name}</span>
                             <Button type="primary" danger onClick={handleLogout}>
                                 {TEXTS.LOGOUT_BUTTON}
                             </Button>
@@ -68,7 +76,7 @@ const MainLayout: React.FC = () => {
                 </div>
             </Header>
             <Content style={{ padding: '0 50px', marginTop: '20px' }}>
-                <div className="site-layout-content" style={{ background: '#fff', padding: 24, minHeight: 380, borderRadius: '8px' }}>
+                <div className="site-layout-content" style={{ padding: 32, minHeight: 380 }}>
                     <Outlet />
                 </div>
             </Content>
