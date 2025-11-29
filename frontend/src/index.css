@@ -130,3 +130,35 @@ body.dark-theme .ant-menu-item-selected,
 body.rage-theme .ant-menu-item-selected {
   background-color: rgba(255, 255, 255, 0.1) !important;
 }
+
+/* Bento Card Styles */
+.bento-card {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: pointer;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.bento-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1) !important;
+  z-index: 1;
+}
+
+body.dark-theme .bento-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.rage-theme .bento-card:hover {
+  box-shadow: 0 12px 32px rgba(255, 59, 48, 0.3) !important;
+}
+
+.bento-card .ant-card-body {
+  padding: 24px !important;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}

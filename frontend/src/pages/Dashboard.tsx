@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, List, Tag, Button, Typography, Skeleton, message, Modal, Form, Input } from 'antd';
+import { Tabs, Row, Col, Card, Tag, Button, Typography, Skeleton, message, Modal, Form, Input } from 'antd';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { DiscussionStatus, Role } from '../types';
@@ -46,45 +46,57 @@ const Dashboard: React.FC = () => {
     const activeDiscussions = discussions.filter(d => d.status === DiscussionStatus.ATIVA);
     const finishedDiscussions = discussions.filter(d => d.status === DiscussionStatus.FINALIZADA);
 
-    const DiscussionList = ({ data }: { data: Discussion[] }) => (
-        <List
-            itemLayout="horizontal"
-            dataSource={data}
-            renderItem={(item) => (
-                <List.Item
-                    actions={[<Link to={`/discussion/${item.id}`}>Ver Detalhes</Link>]}
-                >
-                    <List.Item.Meta
-                        title={<Link to={`/discussion/${item.id}`}>{item.title}</Link>}
-                        description={
-                            <>
-                                <div>{item.content.substring(0, 100)}...</div>
-                                <div style={{ marginTop: 8 }}>
-                                    <Tag color={item.status === DiscussionStatus.ATIVA ? 'green' : 'red'}>
-                                        {item.status.toUpperCase()}
-                                    </Tag>
-                                    <span style={{ fontSize: '12px', color: '#888' }}>
-                                        {new Date(item.created_at).toLocaleDateString()}
-                                    </span>
+    const DiscussionGrid = ({ data }: { data: Discussion[] }) => (
+        <Row gutter={[24, 24]}>
+            {data.map((item) => (
+                <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
+                    <Link to={`/discussion/${item.id}`} style={{ textDecoration: 'none' }}>
+                        <Card className="bento-card" bordered={false}>
+                            <div style={{ flex: 1 }}>
+                                <Title level={4} style={{ marginBottom: 12, fontSize: '18px', fontWeight: 700, lineHeight: 1.3 }} ellipsis={{ rows: 2 }}>
+                                    {item.title}
+                                </Title>
+                                <div style={{
+                                    color: 'var(--text-secondary)',
+                                    marginBottom: 24,
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    fontSize: '14px',
+                                    lineHeight: 1.5
+                                }}>
+                                    {item.content}
                                 </div>
-                            </>
-                        }
-                    />
-                </List.Item>
-            )}
-        />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                                <Tag
+                                    color={item.status === DiscussionStatus.ATIVA ? 'green' : 'red'}
+                                    style={{ borderRadius: '12px', padding: '0 10px', border: 'none', fontWeight: 500 }}
+                                >
+                                    {item.status.toUpperCase()}
+                                </Tag>
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                    {new Date(item.created_at).toLocaleDateString()}
+                                </span>
+                            </div>
+                        </Card>
+                    </Link>
+                </Col>
+            ))}
+        </Row>
     );
 
     const items = [
         {
             key: '1',
             label: TEXTS.TAB_ACTIVE,
-            children: <DiscussionList data={activeDiscussions} />,
+            children: <DiscussionGrid data={activeDiscussions} />,
         },
         {
             key: '2',
             label: TEXTS.TAB_FINISHED,
-            children: <DiscussionList data={finishedDiscussions} />,
+            children: <DiscussionGrid data={finishedDiscussions} />,
         },
     ];
 
