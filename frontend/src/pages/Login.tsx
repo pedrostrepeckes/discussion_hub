@@ -29,7 +29,7 @@ const Login: React.FC = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            setAuth(token, userResponse.data);
+            setAuth(userResponse.data);
             message.success(TEXTS.SUCCESS_GENERIC);
             navigate('/');
         } catch (error: any) {
