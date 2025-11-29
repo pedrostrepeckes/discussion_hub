@@ -69,6 +69,44 @@ def update_user_me(
     db.refresh(db_user)
     return db_user
 
+@router.get("/users/", response_model=List[schemas.UserOut])
+@limiter.limit("60/minute")
+def read_users(
+    request: Request, 
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(database.get_db), 
+    current_user: models.User = Depends(auth.get_current_active_admin)
+):
+    users = db.query(models.User).offset(skip).limit(limit).all()
+    return users
+
+@router.put("/users/{user_id}/role", response_model=schemas.UserOut)
+@limiter.limit("5/minute")
+def update_user_role(
+    request: Request,
+    user_id: int,
+    role_update: schemas.UserRoleUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_active_admin)
+):
+    target_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail=texts.ERROR_USER_NOT_FOUND)
+
+    # Security Rule: Only Super Admin can change role of another Admin
+    if target_user.role == models.Role.admin:
+        if current_user.email != "pedrostrepeckes@gmail.com":
+             raise HTTPException(
+                status_code=403, 
+                detail="Apenas o Super Admin pode alterar permissões de outros administradores."
+            )
+
+    target_user.role = role_update.role
+    db.commit()
+    db.refresh(target_user)
+    return target_user
+
 # Discussion Endpoints
 @router.post("/discussions/", response_model=schemas.DiscussionOut)
 @limiter.limit("60/minute")

@@ -20,6 +20,9 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     password: Optional[str] = None
 
+class UserRoleUpdate(BaseModel):
+    role: Role
+
 class UserOut(UserBase):
     id: int
     role: Role

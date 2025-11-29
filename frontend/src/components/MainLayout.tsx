@@ -39,6 +39,14 @@ const MainLayout: React.FC = () => {
         });
     }
 
+    if (user?.role === Role.ADMIN) {
+        menuItems.push({
+            key: '/admin/users',
+            label: 'Usuários',
+            onClick: () => navigate('/admin/users'),
+        });
+    }
+
     return (
         <Layout className="layout" style={{ minHeight: '100vh' }}>
             <Header style={{

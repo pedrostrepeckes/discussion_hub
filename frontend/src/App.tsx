@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import DiscussionDetail from './pages/DiscussionDetail';
 import ModerationPanel from './pages/ModerationPanel';
+import UserManagement from './pages/UserManagement';
 import Settings from './pages/Settings';
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
           <Route index element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="discussion/:id" element={<PrivateRoute><DiscussionDetail /></PrivateRoute>} />
           <Route path="moderation" element={<PrivateRoute><ModerationPanel /></PrivateRoute>} />
+          <Route path="admin/users" element={<PrivateRoute><UserManagement /></PrivateRoute>} />
           <Route path="settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         </Route>
       </Routes>
