@@ -19,7 +19,7 @@ interface ResponseItemProps {
     onCancelReply: () => void;
     onSubmitReply: (values: any) => void;
     submittingReply: boolean;
-    isRoot?: boolean;
+
     containerStyle?: React.CSSProperties;
     cardStyle?: React.CSSProperties;
 }
@@ -32,7 +32,7 @@ const ResponseItem: React.FC<ResponseItemProps> = ({
     onCancelReply,
     onSubmitReply,
     submittingReply,
-    isRoot = false,
+
     containerStyle,
     cardStyle
 }) => {
@@ -104,19 +104,15 @@ const ResponseItem: React.FC<ResponseItemProps> = ({
                     <Divider type="vertical" />
                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
 
-                    {isRoot && (
-                        <>
-                            <Divider type="vertical" />
-                            <Button
-                                type="link"
-                                icon={<MessageOutlined />}
-                                onClick={() => onReply(item.id)}
-                                size="small"
-                            >
-                                Responder
-                            </Button>
-                        </>
-                    )}
+                    <Divider type="vertical" />
+                    <Button
+                        type="link"
+                        icon={<MessageOutlined />}
+                        onClick={() => onReply(item.id)}
+                        size="small"
+                    >
+                        Responder
+                    </Button>
                 </div>
 
                 {isReplying && (
@@ -167,7 +163,7 @@ const ResponseItem: React.FC<ResponseItemProps> = ({
                                 onCancelReply={onCancelReply}
                                 onSubmitReply={onSubmitReply}
                                 submittingReply={submittingReply}
-                                isRoot={false} // Nested items are not root
+
                                 containerStyle={replyContainerStyle}
                                 cardStyle={replyCardStyle}
                             />
@@ -381,7 +377,7 @@ const DiscussionDetail: React.FC = () => {
                             onCancelReply={() => setReplyingTo(null)}
                             onSubmitReply={handleReplySubmit}
                             submittingReply={submittingReply}
-                            isRoot={true}
+
                         />
                     ))}
                 </Col>
@@ -397,7 +393,7 @@ const DiscussionDetail: React.FC = () => {
                             onCancelReply={() => setReplyingTo(null)}
                             onSubmitReply={handleReplySubmit}
                             submittingReply={submittingReply}
-                            isRoot={true}
+
                         />
                     ))}
                 </Col>

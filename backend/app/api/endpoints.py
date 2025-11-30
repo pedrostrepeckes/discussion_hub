@@ -157,8 +157,7 @@ def create_response(request: Request, discussion_id: int, response: schemas.Resp
         parent = db.query(models.Response).filter(models.Response.id == response.parent_id).first()
         if not parent:
             raise HTTPException(status_code=404, detail=texts.ERROR_RESPONSE_NOT_FOUND)
-        if parent.parent_id: # Parent already has a parent, so this would be level 2 (too deep)
-            raise HTTPException(status_code=400, detail=texts.ERROR_NESTING_LIMIT)
+
         
         # Check if user already replied to this parent
         existing_response = db.query(models.Response).filter(
