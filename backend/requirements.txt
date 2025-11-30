@@ -9,3 +9,5 @@ pydantic[email]
 alembic
 python-dotenv
 slowapi
+httpx
+aiosmtplib
